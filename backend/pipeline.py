@@ -136,7 +136,7 @@ class BusinessAssistant:
 
             causal_model = gcm.InvertibleStructuralCausalModel(G) 
 
-            sample1 = data[data['Date'] < '2025-05-15']
+            sample1 = data[data['Date'] != '2025-05-15']
             sample2 = data[data['Date'] == '2025-05-15']
 
             sample1.drop(columns='Date', inplace=True)
@@ -205,7 +205,7 @@ class BusinessAssistant:
             
         elif classification == "insight":
             # return self.run_insight(question)
-            response = process_query(question)
+            response = process_query(question,merchant)
             return response['english_response']
         else:
             return self.fallback(question)

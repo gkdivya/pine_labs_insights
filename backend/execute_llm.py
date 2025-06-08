@@ -37,13 +37,15 @@ def map_acquirer(acq):
     return "OTHER"
 
 
-def load_data(file_path="data/data_cleaned.csv"):
+def load_data(file_path="data/data_cleaned.csv",merchant=None):
     """Load and prepare the cleaned data."""
     try:
         df = pd.read_csv(file_path)
         # Convert Date column to datetime if it exists
         if 'Date' in df.columns:
             df['Date'] = pd.to_datetime(df['Date'])
+        if merchant:
+            df = df[df['Merchant Display Name'] == merchant]
         return df
     except FileNotFoundError:
         print(f"Error: Could not find file {file_path}")
@@ -58,7 +60,7 @@ def get_system_message():
     return """You are an expert Python data-analyst and payments-domain SME.
 Your job is to read natural-language questions about Pine Labs payment data and respond **only** with a short, runnable Python snippet (pandas-style) that produces the requested result from a DataFrame named `df` (already loaded from **data_cleaned.csv**).
 
-Today is 16th May 2025. Calculate all dates relative to this date if asked for any date.
+IMPORTANT:  TODAY IS 2025-05-16. Calculate all dates relative to this date if asked for any date.
 ─────────────────────────────
 DATA OVERVIEW
 ─────────────────────────────
@@ -215,6 +217,7 @@ Response: "The total Gross Merchandise Value (GMV) for last week was ₹12.5 lak
 Question: "Show refund rates by payment mode"
 Result: DataFrame with payment modes and their refund rates
 Response: "Here are the refund rates by payment mode: Credit/Debit Cards had a 2.3% refund rate, while UPI transactions had a 1.8% refund rate."
+Refund can be negative.It means that the merchant has paid the customer.
 """
     
     prompt = f"""
@@ -339,7 +342,7 @@ avg_refund_amount
         print("Required columns (Date, Refund Amount) not found in the dataset.")
 
 
-def process_query(user_input: str, api_key: str = None):
+def process_query(user_input: str, merchant: str = None, api_key: str = None):
     """
     Process a user query and return structured response with code, result, and English explanation.
     
@@ -364,7 +367,7 @@ def process_query(user_input: str, api_key: str = None):
                 }
         
         # Load data
-        df = load_data()
+        df = load_data(merchant=merchant)
         if df is None:
             return {
                 "success": False,
