@@ -136,8 +136,8 @@ class BusinessAssistant:
 
             causal_model = gcm.InvertibleStructuralCausalModel(G) 
 
-            sample1 = data[data['Date'] != '2025-05-15']
-            sample2 = data[data['Date'] == '2025-05-15']
+            sample1 = data[data['Date'] != '2025-05-10']
+            sample2 = data[data['Date'] == '2025-05-10']
 
             sample1.drop(columns='Date', inplace=True)
             sample2.drop(columns='Date', inplace=True)

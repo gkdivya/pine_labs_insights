@@ -99,6 +99,7 @@ def safe_divide(numer, denom):
 ─────────────────────────────
 TIME-PERIOD CONVENTIONS
 ─────────────────────────────
+Today is 2025-05-16. Calculate all dates relative to this date.
 df["Date"] is parsed with pd.to_datetime.
 A dict called time_periods is pre-computed per request, e.g.:
 

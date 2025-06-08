@@ -60,7 +60,7 @@ async def get_business_insights(request: BusinessInsightsRequest):
     data = pd.read_csv('data/data_cleaned.csv')
     merchant = request.merchant
     df = data[data['Merchant Display Name'] == merchant]
-    sample2_summary = df[df['Date'] == '2025-05-01']
+    sample2_summary = df[df['Date'] == '2025-05-10']
     analysis_prompt = f"""You are a business intelligence analyst specializing in payment systems and transaction analysis.
 
     Do not include any recommendations. JUST SIMPLE EDA ANALYSIS
