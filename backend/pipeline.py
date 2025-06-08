@@ -1,10 +1,13 @@
-from cgitb import reset
 import os
 from openai import OpenAI
-from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT, FALLBACK_PROMPT
+from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT
 from .assistant import DataAnalysisAssistant
-from .execute_llm import process_query
 from dotenv import load_dotenv
+import networkx as nx
+from dowhy import gcm
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
 load_dotenv()
 
@@ -49,12 +52,6 @@ class BusinessAssistant:
     def __init__(self):
         pass
 
-    def fallback(self, question):
-        """
-        Fallback response when the question is not related to business, finance, transactions, payments, or data analysis
-        """
-        return call_openai_api(FALLBACK_PROMPT, question)
-
     def classify_question(self, question):
         """
         Classify the question into causal or insight
@@ -88,19 +85,159 @@ class BusinessAssistant:
 
         return response
 
-    def query(self, question):
+    def query(self, question, merchant, time_period):
         """
         Query the business assistant
         """
         classification = self.classify_question(question)
 
         if classification == "causal":
-            pass
-        elif classification == "insight":
-            # return self.run_insight(question)
-            response = process_query(question)
-            return response['english_response']
+            kpi = self.kpi_extraction(question)
+            kpi = kpi.strip("\"")
+            data = pd.read_csv('data/data_cleaned.csv')
+            data = data[data['Merchant Display Name'] == merchant]
+            df=data.copy()
+            data.drop(columns='Convenience Fees Amount In (Paise)', inplace=True)
+            data.drop(columns='Pine Payment Gateway Integration Mode Name', inplace=True)
+            data.dropna(inplace=True)
+
+            # Encode non-numeric columns except date
+            categorical_columns = ['Payment Mode Name', 'Transaction Status Name', 'Acquirer Response Code', 'Acquirer Issuer Match', 'Payout Status']
+
+            for col in categorical_columns:
+                data[col] = pd.Categorical(data[col]).codes
+
+            # Create a DAG using networkx
+            G = nx.DiGraph()
+
+            # Add nodes and edges based on the whiteboard diagram
+            G.add_edges_from([
+                ("Acquirer Issuer Match", "Refund Amount"),
+                ("Payment Mode Name", "Refund Amount"),
+                ("Transaction Status Name", "Refund Amount"),
+                ("Acquirer Response Code", "Refund Amount"),
+                ("Time To Complete", "Refund Amount"),
+                # ("Pine Payment Gateway Integration Mode Name", "Refund Amount"),
+
+                ("Refund Amount", "Settlement Amount"),
+
+                ("Bank Commision", "Settlement Amount"),
+                # ("Convenience Fees Amount In (Paise)", "settlement_amount"),
+                ("Amount To Be Deducted In Addition To Bank Charges", "Settlement Amount"),
+                ("Bank Service Tax", "Settlement Amount")
+            ])
+
+            causal_model = gcm.InvertibleStructuralCausalModel(G) 
+
+            if time_period == "yesterday":
+                sample1 = data[data['Date'] < '2025-05-15']
+                sample2 = data[data['Date'] == '2025-05-15']
+            elif time_period == "day before yesterday":
+                sample1 = data[data['Date'] < '2025-05-14']
+                sample2 = data[data['Date'] == '2025-05-14']
+            else:
+                return "Invalid time period"
+
+            sample1.drop(columns='Date', inplace=True)
+            sample2.drop(columns='Date', inplace=True)
+
+            gcm.auto.assign_causal_mechanisms(causal_model, data)
+
+            gcm.fit(causal_model, data)
+            print(data)
+            attribution_scores = gcm.distribution_change(causal_model,
+                                                        sample1,
+                                                        sample2,
+                                                        kpi,
+                                                        num_samples=2000,
+                                                        difference_estimation_func=lambda x1, x2 : np.mean(x2) - np.mean(x1)
+            )
+            
+            if "Refund Amount" in attribution_scores:
+                attribution_scores.pop('Refund Amount')
+            if "Settlement Amount" in attribution_scores:
+                attribution_scores.pop('Settlement Amount')
+            
+            attribution_scores = {k: abs(float(v)) for k, v in attribution_scores.items()}    
+
+            # Initialize OpenAI client
+            client = OpenAI()
+
+            # Craft a prompt for analyzing sample 2 data
+            sample2_summary = df[df['Date'] == '2025-05-01'][sample2.columns]
+            analysis_prompt = f"""You are a business intelligence analyst specializing in payment systems and transaction analysis.
+
+            Do not include any recommendations. JUST SIMPLE EDA ANALYSIS
+
+            I have data from a subset of our payment transactions that shows unusual or potentially anomalous patterns. Here is a summary of the key metrics and their distributions:
+            Make sure that you only do data analysis and do not make any assumptions. Keep the analysis as concise as possible. It should be on point. 
+
+            {sample2_summary}
+
+            Please provide a detailed business analysis that include a simple basic EDA on the values in each column. 
+
+
+            Please structure your response in clear sections and avoid technical jargon, as this will be presented to senior business stakeholders.
+            Do not include a seperate section for conclusion or summary or anything like that.
+            """
+
+            # Make the API call
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a business intelligence analyst providing insights on payment transaction patterns."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            response = str(response.choices[0].message.content)
+            print("type of response", type(response)) 
+
+            # Convert attribution scores to a more readable format
+            formatted_scores = "\n".join([f"{k}: {float(v):.2f}" for k,v in attribution_scores.items()])
+
+            # Craft a detailed prompt for GPT
+            prompt = f"""You are a financial analyst and data scientist specializing in payment systems and transaction analysis. 
+            I have attribution scores from a causal analysis of our payment system, showing how different factors contribute to changes in Refund Amount.
+
+            The scores represent the causal impact of each variable on refund amounts, where the magnitude shows the strength of the impact
+
+            Here are the attribution scores:
+            {formatted_scores}
+
+            Please provide a detailed business analysis that:
+            1. Identifies the most significant factors affecting refunds. Only include the top 2 factors. 
+            2. Explains what these relationships mean in business terms.
+            3. Suggests actionable recommendations based on these findings
+            4. Discusses potential implications for risk management and process optimization
+
+            Focus on practical insights that would be valuable for:
+            - Risk Management Teams
+            - Payment Operations
+            - Customer Service
+            - Business Strategy
+
+            Please structure your response in clear sections and use specific examples where possible.
+            These insights have to be given to CEO of pine labs so make sure there is no technical jargon. Also, do not include any actual attribution numbers. 
+            """
+
+            # Make the API call
+
+            response_ = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a financial analyst and payment systems expert providing business insights."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            response_ = str(response_.choices[0].message.content)
+            response += response_
+            return response
+            
         else:
-            return self.fallback(question)
+            return self.run_insight(question)
 
             

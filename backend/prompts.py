@@ -2,55 +2,46 @@ EXTRACT_KPI_PROMPT = """
     You are an expert at extracting Key Performance Indicators (KPIs) from business questions. Your task is to identify and return the relevant KPI(s) from the given question.
 
     AVAILABLE KPIs:
-    - "refund-amount"
-    - "settlement-amount"
+    - "Refund Amount"
+    - "Settlement Amount"
     
     RESPONSE FORMAT:
-    - For single KPI: Return the KPI in quotes, e.g., "refund-amount"
-    - For multiple KPIs: Return comma-separated KPIs in quotes, e.g., "refund-amount", "settlement-amount"
+    - For single KPI: Return the KPI in quotes, e.g., "Refund Amount"
+    - For multiple KPIs: Return comma-separated KPIs in quotes, e.g., "Refund Amount", "Settlement Amount"
     
     EXTRACTION RULES:
-    - Look for keywords related to refunds (refund, refunded, refunding) → "refund-amount"
-    - Look for keywords related to settlements (settlement, settled, settling) → "settlement-amount"
+    - Look for keywords related to refunds (refund, refunded, refunding) → "Refund Amount"
+    - Look for keywords related to settlements (settlement, settled, settling) → "Settlement Amount"
     - If both are mentioned, return both KPIs
     - If neither is clearly mentioned, return the most contextually relevant KPI
     
     EXAMPLES:
     Question: "What is the avg refund amount for all transactions from 1st to 5th May?"
-    Output: "refund-amount"
+    Output: "Refund Amount"
     
     Question: "What is the avg settlement for all transactions from 1st to 5th May?"
-    Output: "settlement-amount"
+    Output: "Settlement Amount"
     
     Question: "Compare refund and settlement amounts for last month"
-    Output: "refund-amount", "settlement-amount"
+    Output: "Refund Amount", "Settlement Amount"
     
     Question: "Show me transaction settlement data"
-    Output: "settlement-amount"
+    Output: "Settlement Amount"
     
     Extract the KPI(s) from the following question:
 """
 
 
-FALLBACK_PROMPT = """
-    You are an expert at providing a fallback response when the question is not related to business, finance, transactions, payments, or data analysis.
-    
-    When a user asks a question that is not related to business, finance, transactions, payments, or data analysis, respond with:
-    "I expertise in business related questions. Try something else."
-"""
-    
-
 
 CLASSIFY_QUESTION_PROMPT = """
-    You are an expert at classifying questions into three categories: causal analysis, insight analysis, or other.
+    You are an expert at classifying business questions into two categories: causal analysis or insight analysis.
 
     CLASSIFICATION RULES:
-    - Return "causal" if the question asks WHY something happened, seeks explanations, or investigates causes/reasons related to business/finance
-    - Return "insight" if the question asks WHAT/HOW MUCH/WHEN, seeks descriptive statistics, or requests data summaries related to business/finance
-    - Return "other" if the question is not related to business, finance, transactions, payments, or data analysis
+    - Return "causal" if the question asks WHY something happened, seeks explanations, or investigates causes/reasons
+    - Return "insight" if the question asks WHAT/HOW MUCH/WHEN, seeks descriptive statistics, or requests data summaries
 
     RESPONSE FORMAT:
-    Only return one word: either "causal", "insight", or "other"
+    Only return one word: either "causal" or "insight"
 
     EXAMPLES:
     Question: "What is the avg refund amount for all transactions from 1st to 5th May?" → insight
@@ -61,10 +52,6 @@ CLASSIFY_QUESTION_PROMPT = """
     Question: "What caused the spike in refunds on Monday?" → causal
     Question: "Show me the top 10 customers by transaction volume" → insight
     Question: "Why are customers requesting more refunds this month?" → causal
-    Question: "What is the weather like today?" → other
-    Question: "How do I cook pasta?" → other
-    Question: "What is the capital of France?" → other
-    Question: "Tell me a joke" → other
 
     Classify the following question:
 """

@@ -24,6 +24,7 @@ class QueryRequest(BaseModel):
     
 class QueryResponse(BaseModel):
     question: str
+    merchant: str
     response: str
     success: bool
     error: Optional[str] = None
@@ -48,7 +49,7 @@ async def run_assistant_query(request: QueryRequest):
     logger.info(f"Processing query: {request.question}")
     
     # Run the query through the assistant
-    response = business_assistant.query(request.question)
+    response = business_assistant.query(request.question, request.merchant)
     
     if response is None:
         raise HTTPException(status_code=500, detail="Assistant returned no response")
@@ -58,7 +59,8 @@ async def run_assistant_query(request: QueryRequest):
     return QueryResponse(
         question=request.question,
         response=response,
-        success=True
+        success=True,
+        merchant=request.merchant
     )
     
     # except Exception as e:
