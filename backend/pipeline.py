@@ -1,7 +1,9 @@
+from cgitb import reset
 import os
 from openai import OpenAI
-from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT
+from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT, FALLBACK_PROMPT
 from .assistant import DataAnalysisAssistant
+from .execute_llm import process_query
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -47,6 +49,12 @@ class BusinessAssistant:
     def __init__(self):
         pass
 
+    def fallback(self, question):
+        """
+        Fallback response when the question is not related to business, finance, transactions, payments, or data analysis
+        """
+        return call_openai_api(FALLBACK_PROMPT, question)
+
     def classify_question(self, question):
         """
         Classify the question into causal or insight
@@ -88,7 +96,11 @@ class BusinessAssistant:
 
         if classification == "causal":
             pass
+        elif classification == "insight":
+            # return self.run_insight(question)
+            response = process_query(question)
+            return response['english_response']
         else:
-            return self.run_insight(question)
+            return self.fallback(question)
 
             
