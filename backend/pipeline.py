@@ -1,11 +1,11 @@
 import os
 from openai import OpenAI
-from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT
+from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT, FALLBACK_PROMPT
 from .assistant import DataAnalysisAssistant
+from .execute_llm import process_query
 from dotenv import load_dotenv
 import networkx as nx
 from dowhy import gcm
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
@@ -51,6 +51,12 @@ class BusinessAssistant:
     """
     def __init__(self):
         pass
+
+    def fallback(self, question):
+        """
+        Fallback response when the question is not related to business, finance, transactions, payments, or data analysis
+        """
+        return call_openai_api(FALLBACK_PROMPT, question)
 
     def classify_question(self, question):
         """
@@ -237,7 +243,9 @@ class BusinessAssistant:
             response += response_
             return response
             
+        elif classification == "insight":
+            # return self.run_insight(question)
+            response = process_query(question)
+            return response['english_response']
         else:
-            return self.run_insight(question)
-
-            
+            return self.fallback(question)

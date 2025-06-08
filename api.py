@@ -4,6 +4,11 @@ from typing import Optional
 import logging
 from backend.pipeline import BusinessAssistant
 
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,6 +34,50 @@ class QueryResponse(BaseModel):
     response: str
     success: bool
     error: Optional[str] = None
+
+
+class CardsDataRequest(BaseModel):
+    merchant: str
+
+class CardsDataResponse(BaseModel):
+    totalTransactions: float
+    totalRefundAmount: float
+    averageSettlementAmount: float
+    successRate: float
+
+
+@app.post("/get-cards-data", response_model=CardsDataResponse)
+async def get_cards_data(request: CardsDataRequest):
+    # Specify the merchant type (e.g., 'Merchant A')
+    merchant_type = request.merchant
+    
+    import pandas as pd
+    df = pd.read_csv('data/data_cleaned.csv')
+
+    # Filter data for the given merchant type
+    df_merchant = df[df['Merchant Display Name'] == merchant_type]
+
+    # Insight 1: Total number of transactions
+    total_transactions = df_merchant.shape[0]
+
+    # Insight 2: Total refund amount
+    total_refund_amount = abs(df_merchant['Refund Amount'].sum())
+
+    # Insight 3: Average settlement amount per transaction
+    average_settlement_amount = df_merchant['Settlement Amount'].mean()
+
+    # Insight 4: Success rate (proportion of captured transactions)
+    success_rate = (df_merchant['Transaction Status Name'] == 'CAPTURED').mean()
+
+    # Assemble insights into a DataFrame for display
+    insights = CardsDataResponse(
+        totalTransactions=total_transactions,
+        totalRefundAmount=total_refund_amount,
+        averageSettlementAmount=average_settlement_amount,
+        successRate=success_rate
+    )
+
+    return insights
 
 @app.get("/")
 async def root():
