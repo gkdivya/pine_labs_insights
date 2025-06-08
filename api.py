@@ -21,6 +21,8 @@ business_assistant = BusinessAssistant()
 # Pydantic models for request/response
 class QueryRequest(BaseModel):
     question: str
+    merchant: str
+    time_period: str
     
 class QueryResponse(BaseModel):
     question: str
@@ -48,7 +50,7 @@ async def run_assistant_query(request: QueryRequest):
     logger.info(f"Processing query: {request.question}")
     
     # Run the query through the assistant
-    response = business_assistant.query(request.question)
+    response = business_assistant.query(request.question, request.merchant, request.time_period)
     
     if response is None:
         raise HTTPException(status_code=500, detail="Assistant returned no response")
