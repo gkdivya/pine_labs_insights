@@ -3,6 +3,10 @@
 
 A FastAPI-based business intelligence assistant that processes natural language queries and provides data-driven insights using OpenAI's GPT models.
 
+
+## DAG
+![DAG Images](DAG.png)
+
 ## Features
 
 - **Natural Language Processing**: Ask business questions in plain English
