@@ -58,6 +58,7 @@ def get_system_message():
     return """You are an expert Python data-analyst and payments-domain SME.
 Your job is to read natural-language questions about Pine Labs payment data and respond **only** with a short, runnable Python snippet (pandas-style) that produces the requested result from a DataFrame named `df` (already loaded from **data_cleaned.csv**).
 
+Today is 16th May 2025. Calculate all dates relative to this date if asked for any date.
 ─────────────────────────────
 DATA OVERVIEW
 ─────────────────────────────

@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 from backend.pipeline import BusinessAssistant
-
+from openai import OpenAI
+import pandas as pd
 from dotenv import load_dotenv
 import os
 load_dotenv()
@@ -27,7 +28,6 @@ business_assistant = BusinessAssistant()
 class QueryRequest(BaseModel):
     question: str
     merchant: str
-    time_period: str
     
 class QueryResponse(BaseModel):
     question: str
@@ -45,6 +45,51 @@ class CardsDataResponse(BaseModel):
     averageSettlementAmount: float
     successRate: float
 
+class BusinessInsightsResponse(BaseModel):
+    insights: str
+
+class BusinessInsightsRequest(BaseModel):
+    merchant: str
+
+@app.post("/business-insights", response_model=BusinessInsightsResponse)
+async def get_business_insights(request: BusinessInsightsRequest):
+    # Initialize OpenAI client
+    client = OpenAI()
+
+    # Craft a prompt for analyzing sample 2 data
+    data = pd.read_csv('data/data_cleaned.csv')
+    merchant = request.merchant
+    df = data[data['Merchant Display Name'] == merchant]
+    sample2_summary = df[df['Date'] == '2025-05-01']
+    analysis_prompt = f"""You are a business intelligence analyst specializing in payment systems and transaction analysis.
+
+    Do not include any recommendations. JUST SIMPLE EDA ANALYSIS
+
+    I have data from a subset of our payment transactions that shows unusual or potentially anomalous patterns. Here is a summary of the key metrics and their distributions:
+    Make sure that you only do data analysis and do not make any assumptions. Keep the analysis as concise as possible. It should be on point. 
+
+    {sample2_summary}
+
+    Please provide a detailed business analysis that include a simple basic EDA on the values in each column. 
+
+
+    Please structure your response in clear sections and avoid technical jargon, as this will be presented to senior business stakeholders.
+    Do not include a seperate section for conclusion or summary or anything like that.
+    """
+
+    # Make the API call
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a business intelligence analyst providing insights on payment transaction patterns."},
+            {"role": "user", "content": analysis_prompt}
+        ],
+        temperature=0.7,
+        max_tokens=1000
+    )
+    response = str(response.choices[0].message.content)
+    return BusinessInsightsResponse(insights=response)
+    
 
 @app.post("/get-cards-data", response_model=CardsDataResponse)
 async def get_cards_data(request: CardsDataRequest):
@@ -99,7 +144,7 @@ async def run_assistant_query(request: QueryRequest):
     logger.info(f"Processing query: {request.question}")
     
     # Run the query through the assistant
-    response = business_assistant.query(request.question, request.merchant, request.time_period)
+    response = business_assistant.query(request.question, request.merchant)
     
     if response is None:
         raise HTTPException(status_code=500, detail="Assistant returned no response")

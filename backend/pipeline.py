@@ -1,4 +1,5 @@
 import os
+from token import OP
 from openai import OpenAI
 from .prompts import EXTRACT_KPI_PROMPT, CLASSIFY_QUESTION_PROMPT, FALLBACK_PROMPT
 from .assistant import DataAnalysisAssistant
@@ -91,7 +92,7 @@ class BusinessAssistant:
 
         return response
 
-    def query(self, question, merchant, time_period):
+    def query(self, question, merchant):
         """
         Query the business assistant
         """
@@ -135,14 +136,8 @@ class BusinessAssistant:
 
             causal_model = gcm.InvertibleStructuralCausalModel(G) 
 
-            if time_period == "yesterday":
-                sample1 = data[data['Date'] < '2025-05-15']
-                sample2 = data[data['Date'] == '2025-05-15']
-            elif time_period == "day before yesterday":
-                sample1 = data[data['Date'] < '2025-05-14']
-                sample2 = data[data['Date'] == '2025-05-14']
-            else:
-                return "Invalid time period"
+            sample1 = data[data['Date'] < '2025-05-15']
+            sample2 = data[data['Date'] == '2025-05-15']
 
             sample1.drop(columns='Date', inplace=True)
             sample2.drop(columns='Date', inplace=True)
@@ -164,41 +159,7 @@ class BusinessAssistant:
             if "Settlement Amount" in attribution_scores:
                 attribution_scores.pop('Settlement Amount')
             
-            attribution_scores = {k: abs(float(v)) for k, v in attribution_scores.items()}    
-
-            # Initialize OpenAI client
-            client = OpenAI()
-
-            # Craft a prompt for analyzing sample 2 data
-            sample2_summary = df[df['Date'] == '2025-05-01'][sample2.columns]
-            analysis_prompt = f"""You are a business intelligence analyst specializing in payment systems and transaction analysis.
-
-            Do not include any recommendations. JUST SIMPLE EDA ANALYSIS
-
-            I have data from a subset of our payment transactions that shows unusual or potentially anomalous patterns. Here is a summary of the key metrics and their distributions:
-            Make sure that you only do data analysis and do not make any assumptions. Keep the analysis as concise as possible. It should be on point. 
-
-            {sample2_summary}
-
-            Please provide a detailed business analysis that include a simple basic EDA on the values in each column. 
-
-
-            Please structure your response in clear sections and avoid technical jargon, as this will be presented to senior business stakeholders.
-            Do not include a seperate section for conclusion or summary or anything like that.
-            """
-
-            # Make the API call
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a business intelligence analyst providing insights on payment transaction patterns."},
-                    {"role": "user", "content": analysis_prompt}
-                ],
-                temperature=0.7,
-                max_tokens=1000
-            )
-            response = str(response.choices[0].message.content)
-            print("type of response", type(response)) 
+            attribution_scores = {k: abs(float(v)) for k, v in attribution_scores.items()}   
 
             # Convert attribution scores to a more readable format
             formatted_scores = "\n".join([f"{k}: {float(v):.2f}" for k,v in attribution_scores.items()])
@@ -229,7 +190,7 @@ class BusinessAssistant:
             """
 
             # Make the API call
-
+            client = OpenAI()
             response_ = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -240,8 +201,7 @@ class BusinessAssistant:
                 max_tokens=1000
             )
             response_ = str(response_.choices[0].message.content)
-            response += response_
-            return response
+            return response_
             
         elif classification == "insight":
             # return self.run_insight(question)
