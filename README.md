@@ -7,7 +7,8 @@ A FastAPI-based business intelligence assistant that processes natural language 
 ## DAG
 ![DAG Images](DAG.png)
 
-![Architecture Diagram](arch.png)
+<img src="arch.png" alt="Architecture Diagram" width="400"/>
+
 
 [DoWhy-GCM Causal Inference](https://arxiv.org/abs/2206.06821)
 
