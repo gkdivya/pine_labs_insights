@@ -7,6 +7,8 @@ A FastAPI-based business intelligence assistant that processes natural language 
 ## DAG
 ![DAG Images](DAG.png)
 
+![Architecture Diagram](arch.png)
+
 [DoWhy-GCM Causal Inference](https://arxiv.org/abs/2206.06821)
 
 https://medium.com/data-science/using-causal-graphs-to-answer-causal-questions-5fd1dd82fa90
